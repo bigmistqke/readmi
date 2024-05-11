@@ -1,15 +1,12 @@
 # readmi
 
-To install dependencies:
+# TODO
 
-```bash
-bun install
-```
+**will be implemented**
 
-To run:
+1. support declaration files split up in multiple files
 
-```bash
-bun run index.ts
-```
+**will be implemented later aka never**
 
-This project was created using `bun init` in bun v1.1.7. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+1. constructing types from `@typedef` tags
+2. getting typedoc comments from exported destructured variales
