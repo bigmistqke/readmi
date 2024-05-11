@@ -1,0 +1,16 @@
+{
+  "name": "readmi",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "bun-plugin-dts": "^0.2.3"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "jsdoc-to-markdown": "^8.0.1",
+    "typescript": "^5.4.5"
+  }
+}
