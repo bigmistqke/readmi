@@ -124,7 +124,7 @@ export const testFunctionWithComplexParams = (
     /** Key in the configuration object */
     key: string
     /** Value associated with the key */
-    value: any
+    value: number
     /**
      * Callback function within the configuration object.
      * @param {{ name: string, age: number }} userInfo - User details.
@@ -155,7 +155,7 @@ export function testTraditionalFunctionSyntax(
     /** Inlined jsdoc comment for key */
     key: string
     /** Inlined jsdoc comment for value */
-    value: any
+    value: number
   },
   settings: Settings,
 ) {

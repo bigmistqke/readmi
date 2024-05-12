@@ -5,7 +5,10 @@
     "target": "ESNext",
     "module": "ESNext",
     "moduleDetection": "force",
-    "jsx": "react-jsx",
+
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+
     "allowJs": true,
 
     "outDir": "./dist",
@@ -31,7 +34,11 @@
     "noPropertyAccessFromIndexSignature": false
   },
   "include": [
-    "src/**/*" // Specify the files to be compiled
+    "src/**/*", // Specify the files to be compiled
+    "dev/**/*", // Specify the files to be compiled
+    "templating/App.tsx",
+    "templating/index.tsx",
+    "test.ts"
   ],
   "exclude": [
     "node_modules", // Exclude the node_modules directory

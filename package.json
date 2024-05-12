@@ -2,6 +2,9 @@
   "name": "readmi",
   "module": "index.ts",
   "type": "module",
+  "scripts": {
+    "parse-test": "cd src/test && bun build.ts && cd .. && bun parse-dts.ts test/dist/test.d.ts"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "bun-plugin-dts": "^0.2.3"
@@ -11,6 +14,10 @@
   },
   "dependencies": {
     "jsdoc-to-markdown": "^8.0.1",
-    "typescript": "^5.4.5"
+    "shiki": "^1.5.1",
+    "solid-js": "^1.8.17",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.11",
+    "vite-plugin-solid": "^2.10.2"
   }
 }
