@@ -12,7 +12,7 @@
     "allowJs": true,
 
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": ".",
 
     "declaration": true,
     "declarationMap": true,
@@ -31,7 +31,10 @@
     // Some stricter flags (disabled by default)
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "noPropertyAccessFromIndexSignature": false
+    "noPropertyAccessFromIndexSignature": false,
+    "paths": {
+      "@bigmistqke/readmi": ["./src/index.ts"]
+    }
   },
   "include": [
     "src/**/*", // Specify the files to be compiled

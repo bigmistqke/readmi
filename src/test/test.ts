@@ -1,4 +1,17 @@
 /**
+ * Represents a simple tuple of string literals.
+ * @tag tuple-example
+ */
+export type TupleType = ['hello', 'world']
+
+/**
+ * Defines a tuple type that incorporates a generic type parameter.
+ * This allows the tuple to hold a value of any specified type.
+ * @tag tuple-with-generic
+ */
+export type TupleTypeWithGeneric<T> = [T]
+
+/**
  * Tests the parsing of a simple numeric type to ensure basic type annotations are correctly interpreted.
  * @tag test-case
  */
@@ -31,16 +44,19 @@ export const testObjectWithInlinedJSDoc: {
   price: 99.99,
 }
 
-const testObjectDestructuring = {
-  /** The property that is being destructured. */
-  destructuringProperty: 'John',
+/**
+ * Tests type with generic
+ */
+type ObjectTypeWithGeneric<T> = {
+  /**
+   * Property id is of type T
+   */
+  id: T
 }
 
-/**
- * Tests destructuring assignments where the object being destructured has its own JSDoc comments.
- * Verifies whether the comments are maintained or lost upon destructuring.
- */
-export let { destructuringProperty } = testObjectDestructuring
+export const testObjectWithGeneric: ObjectTypeWithGeneric<string> = {
+  id: 'hallo',
+}
 
 /**
  * Tests the handling of both explicit JSDoc tags and inlined JSDoc comments within a TypeScript object type declaration.
@@ -74,6 +90,17 @@ export const testCombinedObjectJSDoc: {
   id: '12345',
   isActive: true,
 }
+
+const testObjectDestructuring = {
+  /** The property that is being destructured. */
+  destructuringProperty: 'John',
+}
+
+/**
+ * Tests destructuring assignments where the object being destructured has its own JSDoc comments.
+ * Verifies whether the comments are maintained or lost upon destructuring.
+ */
+export let { destructuringProperty } = testObjectDestructuring
 
 type Product = {
   /** Documents a product's name within a type alias */
@@ -109,9 +136,8 @@ export function testCreatingSimpleObject() {
  * This tests the scope handling and type inference capabilities of generics in nested contexts.
  * @tag test-case
  */
-export const testGenericTypeInference = <T>() => {
-  type X<T = number> = { id: T }
-  return { id: 0 } as X<T>
+export const testGenericTypeInference = <T>(value: T) => {
+  return value
 }
 
 /**
@@ -151,6 +177,7 @@ export const testFunctionWithComplexParams = (
  * @tag test-case-traditional-function-syntax
  */
 export function testTraditionalFunctionSyntax(
+  /** Inlined jsdoc comment for config */
   config: {
     /** Inlined jsdoc comment for key */
     key: string
@@ -273,11 +300,6 @@ enum TestLogLevel {
   DEBUG = 3,
 }
 
-/**
- * Tests function parameter documentation using an enum, focusing on correct type linkage and
- * value representation in logging functions.
- * @tag test-case
- */
 export function testFunctionUsingEnum(level: TestLogLevel, message: string) {
   console.log(`[${level}]: ${message}`)
 }

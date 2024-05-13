@@ -1,137 +1,29 @@
-import { writeFile } from 'fs'
 import ts from 'typescript'
-import { when } from './utils/conditionals'
+import type {
+  ClassElement,
+  ClassMember,
+  EnumElement,
+  EnumMember,
+  FunctionElement,
+  GenericDeclaration,
+  JSDocInfo,
+  JSDocTag,
+  Parameter,
+  TypeAliasElement,
+  TypeAnnotation,
+  TypeElement,
+  TypeLiteralMember,
+  VariableElement,
+} from './types'
 
-// Base interface for all documentation items
-export interface DocItem {
-  kind: string
-  name: string
-  jsdoc?: JSDocInfo
-}
-
-// JSDoc information with description and tags
-export interface JSDocInfo {
-  description?: readonly string[]
-  tags?: readonly JSDocTag[]
-}
-
-// JSDoc tags
-export interface JSDocTag {
-  tagName: string
-  comment?: string
-  name?: string
-  type?: string
-}
-
-// Variable-specific data
-export interface Variable extends DocItem {
-  kind: 'Variable'
-  typeAnnotation?: TypeAnnotation
-}
-
-// Function-specific data
-export interface Function extends DocItem {
-  kind: 'Function'
-  parameters: readonly Parameter[]
-  returnType: TypeAnnotation | undefined
-}
-
-// Parameter within functions and methods
-export interface Parameter {
-  name: string
-  type?: TypeAnnotation
-  jsdoc?: JSDocInfo
-}
-
-// Class-specific data
-export interface Class extends DocItem {
-  kind: 'Class'
-  isAbstract: boolean
-  extends?: string
-  members: readonly ClassMember[]
-}
-
-// Class members can be properties, methods, or constructors
-export interface ClassMember {
-  kind: 'Property' | 'Method' | 'Constructor'
-  name?: string
-  accessModifier?: string
-  jsdoc?: JSDocInfo
-  typeAnnotation?: TypeAnnotation
-  parameters?: readonly Parameter[]
-}
-
-// Enum-specific data
-export interface Enum extends DocItem {
-  kind: 'Enum'
-  members: readonly EnumMember[]
-}
-
-// Enum members
-export interface EnumMember {
-  name: string
-  jsdoc: JSDocInfo
-}
-
-// Type alias-specific data
-export interface TypeAlias extends DocItem {
-  kind: 'TypeAlias'
-  typeAnnotation?: TypeAnnotation
-}
-
-export type Type = Variable | Function | Class | Enum | TypeAlias
-
-// Type annotations can be primitive types, type references, type literals, or more complex types like unions or intersections
-export type TypeAnnotation =
-  | PrimitiveType
-  | TypeReference
-  | TypeLiteral
-  | UnionOrIntersection
-  | ComplexType
-
-// Represents primitive types such as string, number, boolean
-export interface PrimitiveType {
-  kind: 'PrimitiveType'
-  type: string
-}
-
-// Represents references to other types, possibly defined elsewhere
-export interface TypeReference {
-  kind: 'TypeReference'
-  name: string
-}
-
-// Represents an object type literal
-export interface TypeLiteral {
-  kind: 'TypeLiteral'
-  members: readonly TypeMember[]
-}
-
-// Members of a type literal
-export interface TypeMember {
-  name: string
-  type?: TypeAnnotation
-  jsdoc?: JSDocInfo
-}
-
-// Union or Intersection types
-export interface UnionOrIntersection {
-  kind: 'Union' | 'Intersection'
-  types: readonly TypeAnnotation[]
-}
-
-// More complex types, possibly a recursive structure
-export interface ComplexType {
-  kind: 'ComplexType'
-  details: string // Or more specific properties depending on the complexity
-}
+const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed, removeComments: true })
 
 /**
  * Parses a TypeScript declaration file to extract various symbols and their documentation.
  * @param filePath - The path to the TypeScript file.
  * @returns The extracted data from the TypeScript file.
  */
-function parseDeclarationFile(filePath: string) {
+export function parseDeclarationFile(filePath: string) {
   const program = ts.createProgram([filePath], {
     target: ts.ScriptTarget.ESNext,
     module: ts.ModuleKind.CommonJS,
@@ -143,7 +35,7 @@ function parseDeclarationFile(filePath: string) {
   }
 
   const checker = program.getTypeChecker()
-  const extractedTypes: Type[] = []
+  const extractedTypes: TypeElement[] = []
 
   ts.forEachChild(sourceFile, node => {
     extractedTypes.push(...extractNode(node, checker))
@@ -158,7 +50,7 @@ function parseDeclarationFile(filePath: string) {
  * @param checker - The TypeScript type checker.
  * @returns An array of extracted data from the node.
  */
-function extractNode(node: ts.Node, checker: ts.TypeChecker): Type[] {
+function extractNode(node: ts.Node, checker: ts.TypeChecker): TypeElement[] {
   switch (node.kind) {
     case ts.SyntaxKind.VariableStatement:
       return extractVariables(node as ts.VariableStatement, checker)
@@ -167,7 +59,7 @@ function extractNode(node: ts.Node, checker: ts.TypeChecker): Type[] {
     case ts.SyntaxKind.ClassDeclaration:
       return [extractClass(node as ts.ClassDeclaration, checker)]
     case ts.SyntaxKind.EnumDeclaration:
-      return [extractEnum(node as ts.EnumDeclaration)]
+      return [extractEnum(node as ts.EnumDeclaration, checker)]
     case ts.SyntaxKind.TypeAliasDeclaration:
       return [extractTypeAlias(node as ts.TypeAliasDeclaration, checker)]
     default:
@@ -181,22 +73,60 @@ function extractNode(node: ts.Node, checker: ts.TypeChecker): Type[] {
  * @param checker - The TypeScript type checker.
  * @returns An array of extracted variable data.
  */
-function extractVariables(statement: ts.VariableStatement, checker: ts.TypeChecker): Variable[] {
+function extractVariables(
+  statement: ts.VariableStatement,
+  checker: ts.TypeChecker,
+): VariableElement[] {
   const jsdoc = extractJsDoc(statement)
 
   return statement.declarationList.declarations.map(declaration => {
-    const result: Variable = {
+    const result: VariableElement = {
       kind: 'Variable',
       name: declaration.name.getText(),
       jsdoc,
+      literal: declaration.type
+        ? printer
+            .printNode(ts.EmitHint.Unspecified, declaration, declaration.getSourceFile())
+            .replace('export type ', '')
+        : undefined,
     }
 
     if (declaration.type) {
-      result.typeAnnotation = extractType(declaration.type, checker, jsdoc?.tags)
+      result.typeAnnotation = extractTypeAnnotation(declaration.type, checker, jsdoc?.tags)
     }
 
     return result
   })
+}
+
+function extractGenerics(node: ts.Node, checker: ts.TypeChecker): GenericDeclaration[] | undefined {
+  if (
+    !ts.isFunctionDeclaration(node) &&
+    !ts.isMethodSignature(node) &&
+    !ts.isFunctionTypeNode(node) &&
+    !ts.isTypeAliasDeclaration(node)
+  ) {
+    return
+  }
+
+  const generics =
+    'typeParameters' in node &&
+    node.typeParameters?.map(param => {
+      const name = param.name.text
+      const extendsType = param.constraint
+        ? checker.typeToString(checker.getTypeFromTypeNode(param.constraint))
+        : undefined
+      const defaultValue = param.default
+        ? checker.typeToString(checker.getTypeFromTypeNode(param.default))
+        : undefined
+      return { name, extends: extendsType, defaultValue }
+    })
+
+  if (!generics || generics.length === 0) {
+    return undefined
+  }
+
+  return generics
 }
 
 /**
@@ -205,15 +135,16 @@ function extractVariables(statement: ts.VariableStatement, checker: ts.TypeCheck
  * @param checker - The TypeScript type checker.
  * @returns The extracted function data.
  */
-function extractFunction(func: ts.FunctionDeclaration, checker: ts.TypeChecker): Function {
+function extractFunction(func: ts.FunctionDeclaration, checker: ts.TypeChecker): FunctionElement {
   const name = func.name ? func.name.getText() : 'anonymous'
-  const result: Function = {
+  const result: FunctionElement = {
     kind: 'Function',
     name,
     parameters: func.parameters.map(param => extractParameter(param, checker)),
-    returnType: func.type ? extractType(func.type, checker) : undefined,
+    returnType: func.type ? extractTypeAnnotation(func.type, checker) : undefined,
+    generics: extractGenerics(func, checker),
+    jsdoc: extractJsDoc(func),
   }
-  when(extractJsDoc(func), jsdoc => (result.jsdoc = jsdoc))
   return result
 }
 
@@ -223,7 +154,7 @@ function extractFunction(func: ts.FunctionDeclaration, checker: ts.TypeChecker):
  * @param checker - The TypeScript type checker.
  * @returns The extracted class data.
  */
-function extractClass(cls: ts.ClassDeclaration, checker: ts.TypeChecker): Class {
+function extractClass(cls: ts.ClassDeclaration, checker: ts.TypeChecker): ClassElement {
   // Check for heritage clauses which indicate extension or implementation of other classes/interfaces
   const extendsClause = cls.heritageClauses?.find(
     clause => clause.token === ts.SyntaxKind.ExtendsKeyword,
@@ -239,15 +170,14 @@ function extractClass(cls: ts.ClassDeclaration, checker: ts.TypeChecker): Class 
     modifier => modifier.kind === ts.SyntaxKind.AbstractKeyword,
   )
 
-  const result: Class = {
+  const result: ClassElement = {
     kind: 'Class',
     name: cls.name ? cls.name.getText() : 'anonymous',
     isAbstract,
     extends: extendsName,
     members: cls.members.map(member => extractClassMember(member, checker)).filter(Boolean),
+    jsdoc: extractJsDoc(cls),
   }
-
-  when(extractJsDoc(cls), jsdoc => (result.jsdoc = jsdoc))
 
   return result
 }
@@ -274,18 +204,14 @@ function extractClassMember(member: ts.ClassElement, checker: ts.TypeChecker): C
       ? 'Method'
       : 'Constructor',
     name: name,
-    accessModifier: accessModifier,
-
-    typeAnnotation: extractType(member, checker),
-    // 'type' in member && member.type
-    //   ? checker.typeToString(checker.getTypeAtLocation(member.type))
-    //   : undefined,
+    jsdoc: extractJsDoc(member),
+    typeAnnotation: extractTypeAnnotation(member, checker),
     parameters:
       ts.isConstructorDeclaration(member) || ts.isMethodDeclaration(member)
         ? member.parameters.map(param => extractParameter(param, checker))
         : undefined,
+    accessModifier: accessModifier,
   }
-  when(extractJsDoc(member), jsdoc => (result.jsdoc = jsdoc))
   return result
 }
 
@@ -309,20 +235,25 @@ function getAccessModifier(member: ts.ClassElement): string | undefined {
  * @param enumDecl - The enumeration declaration node.
  * @returns The extracted enumeration data.
  */
-function extractEnum(enumDecl: ts.EnumDeclaration): Enum {
-  const result: Enum = {
+function extractEnum(enumDecl: ts.EnumDeclaration, checker: ts.TypeChecker): EnumElement {
+  const result: EnumElement = {
     kind: 'Enum',
     name: enumDecl.name.getText(),
+    jsdoc: extractJsDoc(enumDecl),
     members: enumDecl.members.map(member => {
+      const enumValue = member.initializer ? checker.getTypeAtLocation(member.initializer) : null
       const result: EnumMember = {
         name: member.name.getText(),
+        jsdoc: extractJsDoc(member),
+        value: enumValue?.value,
+        typeAnnotation: {
+          kind: 'PrimitiveType',
+          literal: typeof enumValue?.value,
+        },
       }
-      when(extractJsDoc(member), jsdoc => (result.jsdoc = jsdoc))
       return result
     }),
   }
-
-  when(extractJsDoc(enumDecl), jsdoc => (result.jsdoc = jsdoc))
 
   return result
 }
@@ -333,57 +264,93 @@ function extractEnum(enumDecl: ts.EnumDeclaration): Enum {
  * @param checker - The TypeScript type checker.
  * @returns The extracted type alias data.
  */
-function extractTypeAlias(alias: ts.TypeAliasDeclaration, checker: ts.TypeChecker): TypeAlias {
-  const result: TypeAlias = {
+function extractTypeAlias(
+  alias: ts.TypeAliasDeclaration,
+  checker: ts.TypeChecker,
+): TypeAliasElement {
+  const result: TypeAliasElement = {
     kind: 'TypeAlias',
     name: alias.name.getText(),
-    typeAnnotation: alias.type ? extractType(alias.type, checker, []) : undefined,
+    jsdoc: extractJsDoc(alias),
+    generics: extractGenerics(alias, checker),
+    typeAnnotation: alias.type ? extractTypeAnnotation(alias.type, checker, []) : undefined,
+    literal: printer
+      .printNode(ts.EmitHint.Unspecified, alias, alias.getSourceFile())
+      .replace('export type ', ''),
   }
-  when(extractJsDoc(alias), jsdoc => (result.jsdoc = jsdoc))
   return result
 }
 
 /**
  * Extracts detailed type information, handling function types, object types, and other complex types.
- * @param node - The type node to process.
+ * @param typeNode - The type node to process.
  * @param checker - The TypeScript type checker.
  * @returns The extracted type data.
  */
 
-function extractType(
-  node: ts.TypeNode,
+function extractTypeAnnotation(
+  typeNode: ts.TypeNode,
   checker: ts.TypeChecker,
   jsDocTags?: readonly JSDocTag[],
 ): TypeAnnotation {
-  if (node.kind === ts.SyntaxKind.TypeLiteral) {
-    return {
-      kind: 'TypeLiteral',
-      members: (node as ts.TypeLiteralNode).members.map(member =>
-        extractTypeMember(
-          member,
-          checker,
-          jsDocTags?.filter(tag => tag.name === member.name?.getText()),
+  switch (typeNode.kind) {
+    case ts.SyntaxKind.TypeLiteral:
+      return {
+        kind: 'TypeLiteral',
+        generics: extractGenerics(typeNode, checker),
+        literal: checker.typeToString(checker.getTypeAtLocation(typeNode)),
+        members: (typeNode as ts.TypeLiteralNode).members.map(member =>
+          extractTypeLiteralMember(
+            member,
+            checker,
+            jsDocTags?.filter(tag => tag.name === member.name?.getText()),
+          ),
         ),
-      ),
-    }
-  } else if (node.kind === ts.SyntaxKind.TypeReference) {
-    const typeRef = node as ts.TypeReferenceNode
-    const type = checker.getTypeAtLocation(typeRef)
+      }
+    case ts.SyntaxKind.FunctionType:
+      const funcNode = typeNode as ts.FunctionTypeNode
+      return {
+        kind: 'FunctionType',
+        literal: checker.typeToString(checker.getTypeAtLocation(typeNode)),
+        parameters: funcNode.parameters.map(param => extractParameter(param, checker)),
+        returnType: extractTypeAnnotation(funcNode.type, checker),
+        generics: extractGenerics(funcNode, checker),
+      }
+    case ts.SyntaxKind.TypeReference:
+      const typeRef = typeNode as ts.TypeReferenceNode
+      const type = checker.getTypeAtLocation(typeRef)
+      return {
+        kind: 'TypeReference',
 
-    // Check whether the reference is a type-alias (type XYZ) or a reference (interface XYZ or class XYZ)
-    if (type.aliasSymbol) {
-      return {
-        kind: 'TypeReference',
-        name: type.aliasSymbol.getName(),
+        name: type.aliasSymbol ? type.aliasSymbol.getName() : typeRef.typeName.getText(),
+        parameters: typeRef.typeArguments?.map(arg => extractTypeAnnotation(arg, checker)),
       }
-    } else {
+    case ts.SyntaxKind.TupleType:
+      const tupleNode = typeNode as ts.TupleTypeNode
       return {
-        kind: 'TypeReference',
-        name: typeRef.typeName.getText(),
+        kind: 'Tuple',
+        literal: checker.typeToString(checker.getTypeAtLocation(typeNode), typeNode),
+        types: tupleNode.elements.map(element => extractTypeAnnotation(element, checker)),
       }
-    }
-  } else {
-    return { kind: 'PrimitiveType', type: checker.typeToString(checker.getTypeAtLocation(node)) }
+    case ts.SyntaxKind.IntersectionType:
+      const intersectionNode = typeNode as ts.IntersectionTypeNode
+      return {
+        kind: 'Intersection',
+        literal: checker.typeToString(checker.getTypeAtLocation(typeNode)),
+        types: intersectionNode.types.map(type => extractTypeAnnotation(type, checker)),
+      }
+    case ts.SyntaxKind.UnionType:
+      const unionNode = typeNode as ts.UnionTypeNode
+      return {
+        kind: 'Union',
+        literal: checker.typeToString(checker.getTypeAtLocation(typeNode)),
+        types: unionNode.types.map(type => extractTypeAnnotation(type, checker)),
+      }
+    default:
+      return {
+        kind: 'PrimitiveType',
+        literal: checker.typeToString(checker.getTypeAtLocation(typeNode)),
+      }
   }
 }
 
@@ -407,9 +374,12 @@ function extractJsDoc(node: ts.Node): JSDocInfo | undefined {
     return undefined
   }
 
-  const result: { description?: string[]; tags?: JSDocTag[] } = {}
-  when(description, description => (result.description = description))
-  when(tags.length > 0 && tags, tags => (result.tags = tags))
+  const result: JSDocInfo = {
+    description,
+  }
+  if (tags.length > 0) {
+    result.tags = tags
+  }
 
   return result
 }
@@ -438,19 +408,15 @@ function extractComment(comment: ts.JSDocTag['comment']) {
  * @param tag - The JSDoc tag to process.
  * @returns The extracted tag detail.
  */
-function extractJsDocTagDetail(tag: ts.JSDocTag) {
+function extractJsDocTagDetail(tag: ts.JSDocTag): JSDocTag {
   const result =
     tag.tagName.text === 'property'
       ? extractJsDocTagDetailProperty(tag)
       : {
           comment: extractComment(tag.comment) || undefined,
           name: (tag as any).name?.text || undefined,
-          type: (tag as any).typeExpression?.type?.getText() || undefined,
+          literal: (tag as any).typeExpression?.type?.getText() || undefined,
         }
-  // Remove empty string fields to clean up the object
-  if (!result.comment) delete result.comment
-  if (!result.name) delete result.name
-  if (!result.type) delete result.type
 
   return result
 }
@@ -464,11 +430,11 @@ function extractJsDocTagDetailProperty(tag: ts.JSDocTag) {
   // Apply regex to the extracted comment text
   const match = extractComment(tag.comment)?.match(/^{(\S+)}\s+(\S+)\s+-\s+(.*)$/)
   if (match) {
-    const [, type, name, description] = match
+    const [, literal, name, description] = match
     return {
       comment: description.trim(), // Ensure description is trimmed of leading/trailing whitespace
       name,
-      type,
+      literal,
     }
   }
   return {}
@@ -483,29 +449,32 @@ function extractJsDocTagDetailProperty(tag: ts.JSDocTag) {
 function extractParameter(param: ts.ParameterDeclaration, checker: ts.TypeChecker) {
   const result: Parameter = {
     name: param.name.getText(),
+    jsdoc: extractJsDoc(param),
+    typeAnnotation: param.type ? extractTypeAnnotation(param.type, checker, []) : undefined,
   }
-  when(extractJsDoc(param), jsdoc => (result.jsdoc = jsdoc))
-  when(param.type && extractType(param.type, checker, []), type => (result.type = type))
   return result
 }
 
 // Extract detailed information from type members
-function extractTypeMember(
+function extractTypeLiteralMember(
   member: ts.TypeElement,
   checker: ts.TypeChecker,
   jsDocTags?: any[],
-): TypeMember {
+): TypeLiteralMember {
   const inlinedJsDoc = extractJsDoc(member)
-  const mergedJsDoc = mergeJsDoc(inlinedJsDoc, jsDocTags)
+  const jsdoc = mergeJsDoc(inlinedJsDoc, jsDocTags)
 
   const type =
-    'type' in member && member.type ? extractType(member.type as ts.TypeNode, checker) : undefined
+    'type' in member && member.type
+      ? extractTypeAnnotation(member.type as ts.TypeNode, checker)
+      : undefined
 
-  const result: TypeMember = {
+  const result: TypeLiteralMember = {
     name: member.name?.getText() || '',
+    typeAnnotation: type,
+    jsdoc,
   }
-  when(type, type => (result.type = type))
-  when(mergedJsDoc, jsdoc => (result.jsdoc = jsdoc))
+
   return result
 }
 
@@ -527,28 +496,13 @@ function mergeJsDoc(
     return undefined
   }
 
-  const result: JSDocInfo = {}
+  const result: JSDocInfo = {
+    tags: inlinedJsDoc?.tags,
+  }
 
-  when(inlinedJsDoc?.tags, tags => (result.tags = tags))
-  when(descriptions.length > 0, () => (result.description = descriptions))
+  if (descriptions.length > 0) {
+    result.description = descriptions
+  }
 
   return result
 }
-
-/**
- * Initializes the extraction process and writes the output to a JSON file.
- */
-function main() {
-  const [inputPath, outputPath] = process.argv.slice(2) // Remove the first two elements
-  const data = parseDeclarationFile(inputPath)
-  const code = `export default ${JSON.stringify(data, null, 2)} as const`
-  writeFile('data.ts', code, error => {
-    if (error) {
-      console.error(`error while writing file:`, error)
-    } else {
-      console.log('success: data written to data.json')
-    }
-  })
-}
-
-main()

@@ -1,26 +1,35 @@
-import { codeToHtml } from 'shiki'
-import type { ComponentProps, JSX, ParentProps } from 'solid-js'
-import { For, Show, Suspense, createResource, type Component } from 'solid-js'
-import { Dynamic } from 'solid-js/web'
-import data from '../src/data.ts'
 import type {
-  Class,
-  ComplexType,
-  Enum,
-  Function,
+  ClassElement,
+  EnumElement,
+  FunctionElement,
+  FunctionTypeAnnotation,
+  GenericDeclaration,
+  IntersectionAnnotation,
   JSDocInfo,
   JSDocTag,
   Parameter,
-  PrimitiveType,
-  TypeAlias,
+  PrimitiveTypeAnnotation,
+  TupleAnnotation,
+  TypeAliasElement,
   TypeAnnotation,
-  TypeLiteral,
-  TypeReference,
-  UnionOrIntersection,
-  Variable,
-} from '../src/parse-dts'
+  TypeLiteralAnnotation,
+  TypeReferenceAnnotation,
+  UnionAnnotation,
+  VariableElement,
+} from '@bigmistqke/readmi'
+import { codeToHtml } from 'shiki'
+import type { ComponentProps, JSX, ParentProps } from 'solid-js'
+import { For, Show, Suspense, createResource, splitProps, type Component } from 'solid-js'
+import { Dynamic } from 'solid-js/web'
+import data from '../src/data.ts'
 
 import styles from './App.module.css'
+
+/**********************************************************************************/
+/*                                                                                */
+/*                               Utility Components                               */
+/*                                                                                */
+/**********************************************************************************/
 
 const Shiki = (props: { code: string }) => {
   const [html] = createResource(() =>
@@ -31,12 +40,19 @@ const Shiki = (props: { code: string }) => {
   )
   return (
     <Suspense>
-      <div class={styles.shiki} innerHTML={html()} />
+      <Pre class={styles.shiki} innerHTML={html()} />
     </Suspense>
   )
 }
 
-const Pre = (props: ParentProps) => <pre style={{ margin: '0px' }}>{props.children}</pre>
+const Pre = (props: Omit<ComponentProps<'pre'>, 'style'> & { style?: JSX.CSSProperties }) => {
+  const [, rest] = splitProps(props, ['style', 'children'])
+  return (
+    <pre style={{ margin: '0px', ...props.style }} {...rest}>
+      {props.children}
+    </pre>
+  )
+}
 const Base = (props: Omit<ComponentProps<'div'>, 'style'> & { style?: JSX.CSSProperties }) => (
   <div
     {...props}
@@ -64,11 +80,48 @@ const Block = (props: ParentProps<ComponentProps<typeof Title>>) => (
   </Base>
 )
 
+const LiteralComponent = (props: { literal?: string }) => (
+  <Show when={props.literal}>
+    {literal => (
+      <Labelled label="literal">
+        <Shiki code={literal()} />
+      </Labelled>
+    )}
+  </Show>
+)
+
+const GenericDeclarationComponent = (props: { generics?: GenericDeclaration[] }) => {
+  return (
+    <Show when={props.generics}>
+      <Labelled label="generics">
+        <For each={props.generics}>
+          {generic => (
+            <Labelled label={generic.name}>
+              <Show when={generic.defaultValue}>
+                {defaultValue => <Labelled label="defaultValue" children={defaultValue()} />}
+              </Show>
+              <Show when={generic.extends}>
+                {extending => <Labelled label="extends" children={extending()} />}
+              </Show>
+            </Labelled>
+          )}
+        </For>
+      </Labelled>
+    </Show>
+  )
+}
+
+/**********************************************************************************/
+/*                                                                                */
+/*                               JS Doc Components                                */
+/*                                                                                */
+/**********************************************************************************/
+
 const JSDocTagComponent = (props: { tag: JSDocTag }) => {
   return (
     <Labelled label={`@${props.tag.tagName}`}>
       <Show
-        when={props.tag.type && props.tag.name && [props.tag.type, props.tag.name]}
+        when={props.tag.literal && props.tag.name && [props.tag.literal, props.tag.name]}
         keyed
         fallback={
           <Show when={props.tag.comment}>
@@ -80,13 +133,13 @@ const JSDocTagComponent = (props: { tag: JSDocTag }) => {
           </Show>
         }
       >
-        {([type, name]) => (
+        {([literal, name]) => (
           <>
             <Labelled label="name" children={name} />
             <Show when={props.tag.comment}>
               {comment => <Labelled label="comment" children={comment()} />}
             </Show>
-            <Labelled label="type" children={<Shiki code={type} />} />
+            <Labelled label="literal" children={<Shiki code={literal} />} />
           </>
         )}
       </Show>
@@ -94,124 +147,178 @@ const JSDocTagComponent = (props: { tag: JSDocTag }) => {
   )
 }
 
-const JSDocComponent = (props: { jsdoc: JSDocInfo }) => {
-  console.log('props.jsdoc', props.jsdoc)
+const JSDocComponent = (props: { jsdoc?: JSDocInfo }) => {
   return (
     <Show when={props.jsdoc}>
-      <Labelled label="jsdoc">
-        <Pre>
-          <For each={props.jsdoc.description}>
+      {jsdoc => (
+        <Labelled label="jsdoc">
+          <For each={jsdoc().description}>
             {description => (
-              <i style={{ 'font-family': 'times new roman', 'font-size': '13pt' }}>{description}</i>
+              <Pre>
+                <i
+                  style={{
+                    'font-family': 'times new roman',
+                    'font-size': '13pt',
+                    display: 'block',
+                  }}
+                >
+                  {description}
+                </i>
+              </Pre>
             )}
           </For>
-        </Pre>
-        <For each={props.jsdoc.tags}>{tag => <JSDocTagComponent tag={tag} />}</For>
-      </Labelled>
+          <For each={jsdoc().tags}>{tag => <JSDocTagComponent tag={tag} />}</For>
+        </Labelled>
+      )}
     </Show>
   )
 }
 
-const PrimitiveTypeComponent = (props: { node: PrimitiveType }) => {
-  return (
-    <>
-      <Labelled label="kind" children={props.node.kind} />
-      <Labelled label="type">
-        <Shiki code={props.node.type} />
-      </Labelled>
-    </>
-  )
+/**********************************************************************************/
+/*                                                                                */
+/*                            Type Annotation Components                          */
+/*                                                                                */
+/**********************************************************************************/
+
+const PrimitiveTypeAnnotationComponent = (props: { annotation: PrimitiveTypeAnnotation }) => {
+  return <></>
 }
-const TypeReferenceComponent = (props: { node: TypeReference }) => {
+const TypeReferenceAnnotationComponent = (props: { annotation: TypeReferenceAnnotation }) => {
   return (
     <>
-      <Labelled label="kind" children={props.node.kind} />
       <Labelled label="name">
-        <a href={`#${props.node.name}`}>{props.node.name}</a>
+        <a href={`#${props.annotation.name}`}>{props.annotation.name}</a>
       </Labelled>
-    </>
-  )
-}
-const TypeLiteralComponent = (props: { node: TypeLiteral }) => {
-  return (
-    <>
-      <Labelled label="kind" children={props.node.kind} />
-      <Labelled
-        label="properties"
-        children={
-          <For each={props.node.members}>
-            {member => (
-              <Labelled label={member.name}>
-                <JSDocComponent jsdoc={member.jsdoc} />
-                <TypeAnnotationComponent annotation={member.type} />
+      <Show when={'arguments' in props.annotation && props.annotation}>
+        {node => (
+          <For each={node().parameters}>
+            {annotation => (
+              <Labelled label="arguments">
+                <TypeAnnotationComponent annotation={annotation} />
               </Labelled>
             )}
           </For>
-        }
-      />
+        )}
+      </Show>
     </>
+  )
+}
+const TypeLiteralAnnotationComponent = (props: { annotation: TypeLiteralAnnotation }) => {
+  return (
+    <Labelled
+      label="properties"
+      children={
+        <For each={props.annotation.members}>
+          {member => (
+            <Labelled label={member.name}>
+              <JSDocComponent jsdoc={member.jsdoc} />
+              <Labelled label="type">
+                <TypeAnnotationComponent annotation={member.typeAnnotation} />
+              </Labelled>
+            </Labelled>
+          )}
+        </For>
+      }
+    />
   )
 }
 
-const UnionComponent = (props: { node: UnionOrIntersection }) => {
+const UnionAnnotationComponent = (props: { annotation: UnionAnnotation }) => {
   return (
-    <>
-      <Labelled label="kind" children={props.node.kind} />
-      <For each={props.node.types}>
+    <Labelled label="types">
+      <For each={props.annotation.types}>
         {annotation => <TypeAnnotationComponent annotation={annotation} />}
       </For>
-    </>
+    </Labelled>
   )
 }
-const IntersectionComponent = (props: { node: UnionOrIntersection }) => {
+const IntersectionAnnotationComponent = (props: { annotation: IntersectionAnnotation }) => {
   return (
-    <>
-      <Labelled label="kind" children={props.node.kind} />
-      <For each={props.node.types}>
+    <Labelled label="types">
+      <For each={props.annotation.types}>
         {annotation => <TypeAnnotationComponent annotation={annotation} />}
       </For>
-    </>
+    </Labelled>
   )
 }
-const ComplexTypeComponent = (props: { node: ComplexType }) => {
+
+const TupleAnnotationComponent = (props: { annotation: TupleAnnotation }) => {
+  return (
+    <Labelled label="types">
+      <For each={props.annotation.types}>
+        {annotation => <TypeAnnotationComponent annotation={annotation} />}
+      </For>
+    </Labelled>
+  )
+}
+
+const FunctionTypeAnnotationComponent = (props: { annotation: FunctionTypeAnnotation }) => {
   return (
     <>
-      <Labelled label="kind" children={props.node.kind} />
-      <Labelled label="details" children={props.node.details} />
+      <ParametersComponent parameters={props.annotation.parameters} />
+      <GenericDeclarationComponent generics={props.annotation.generics} />
+      <Labelled label="return">
+        <Show when={props.annotation.returnType} fallback="void">
+          {returnType => <TypeAnnotationComponent annotation={returnType()} />}
+        </Show>
+      </Labelled>
     </>
   )
 }
 
 const typeAnnotationComponents = {
-  PrimitiveType: PrimitiveTypeComponent,
-  TypeReference: TypeReferenceComponent,
-  TypeLiteral: TypeLiteralComponent,
-  Union: UnionComponent,
-  Intersection: IntersectionComponent,
-  ComplexType: ComplexTypeComponent,
+  PrimitiveType: PrimitiveTypeAnnotationComponent,
+  TypeReference: TypeReferenceAnnotationComponent,
+  TypeLiteral: TypeLiteralAnnotationComponent,
+  Union: UnionAnnotationComponent,
+  Intersection: IntersectionAnnotationComponent,
+  FunctionType: FunctionTypeAnnotationComponent,
+  Tuple: TupleAnnotationComponent,
 }
 
-const TypeAnnotationComponent = (props: { annotation: TypeAnnotation }) => {
+const TypeAnnotationComponent = (props: { annotation?: TypeAnnotation }) => {
   return (
-    <Dynamic component={typeAnnotationComponents[props.annotation.kind]} node={props.annotation} />
+    <Show when={props.annotation}>
+      {annotation => {
+        console.log('annotation().kind', annotation().kind)
+        return (
+          <>
+            <Labelled label="kind" children={annotation().kind} />
+            <Show when={annotation().literal}>
+              {literal => <LiteralComponent literal={literal()} />}
+            </Show>
+            <Dynamic
+              component={typeAnnotationComponents[annotation().kind]}
+              annotation={annotation()}
+            />
+          </>
+        )
+      }}
+    </Show>
   )
 }
 
-const VariableComponent = (props: { node: Variable }) => {
+const VariableComponent = (props: { node: VariableElement }) => {
   return (
     <Block title={props.node.name} type="Variable">
+      <LiteralComponent literal={props.node.literal} />
       <JSDocComponent jsdoc={props.node.jsdoc} />
       <Show when={props.node.typeAnnotation}>
-        {annotation => <TypeAnnotationComponent annotation={annotation()} />}
+        {annotation => (
+          <Labelled label="type">
+            <TypeAnnotationComponent annotation={annotation()} />
+          </Labelled>
+        )}
       </Show>
     </Block>
   )
 }
 
-const FunctionComponent = (props: { node: Function }) => {
+const FunctionComponent = (props: { node: FunctionElement }) => {
   return (
     <Block title={props.node.name} type="Function">
       <JSDocComponent jsdoc={props.node.jsdoc} />
+      <GenericDeclarationComponent generics={props.node.generics} />
       <ParametersComponent parameters={props.node.parameters} />
       <Labelled label="return">
         <Show when={props.node.returnType} fallback="void">
@@ -228,9 +335,13 @@ const ParametersComponent = (props: { parameters: readonly Parameter[] }) => (
       <For each={props.parameters}>
         {parameter => (
           <Labelled label={parameter.name}>
-            <Labelled label="type">
-              <TypeAnnotationComponent annotation={parameter.type} />
-            </Labelled>
+            <Show when={parameter.typeAnnotation}>
+              {type => (
+                <Labelled label="type">
+                  <TypeAnnotationComponent annotation={type()} />
+                </Labelled>
+              )}
+            </Show>
             <JSDocComponent jsdoc={parameter.jsdoc} />
           </Labelled>
         )}
@@ -239,7 +350,7 @@ const ParametersComponent = (props: { parameters: readonly Parameter[] }) => (
   </Labelled>
 )
 
-const ClassComponent = (props: { node: Class }) => {
+const ClassComponent = (props: { node: ClassElement }) => {
   return (
     <Block title={props.node.name} type="Class">
       <JSDocComponent jsdoc={props.node.jsdoc} />
@@ -262,7 +373,7 @@ const ClassComponent = (props: { node: Class }) => {
   )
 }
 
-const EnumComponent = (props: { node: Enum }) => {
+const EnumComponent = (props: { node: EnumElement }) => {
   return (
     <Block title={props.node.name} type="Enum">
       <JSDocComponent jsdoc={props.node.jsdoc} />
@@ -270,6 +381,8 @@ const EnumComponent = (props: { node: Enum }) => {
         {member => (
           <Labelled label={member.name}>
             <JSDocComponent jsdoc={member.jsdoc} />
+            <TypeAnnotationComponent annotation={member.typeAnnotation} />
+            <Labelled label="value" children={member.value} />
           </Labelled>
         )}
       </For>
@@ -277,12 +390,18 @@ const EnumComponent = (props: { node: Enum }) => {
   )
 }
 
-const TypeAliasComponent = (props: { node: TypeAlias }) => {
+const TypeAliasComponent = (props: { node: TypeAliasElement }) => {
   return (
     <Block title={props.node.name} type="TypeAlias">
+      <LiteralComponent literal={props.node.literal} />
       <JSDocComponent jsdoc={props.node.jsdoc} />
+      <GenericDeclarationComponent generics={props.node.generics} />
       <Show when={props.node.typeAnnotation}>
-        {annotation => <TypeAnnotationComponent annotation={annotation()} />}
+        {annotation => (
+          <Labelled label="type">
+            <TypeAnnotationComponent annotation={annotation()} />
+          </Labelled>
+        )}
       </Show>
     </Block>
   )

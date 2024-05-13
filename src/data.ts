@@ -1,4 +1,66 @@
+import type {Type} from "@bigmistqke/readmi";
 export default [
+  {
+    "kind": "TypeAlias",
+    "name": "TupleType",
+    "jsdoc": {
+      "description": [
+        "Represents a simple tuple of string literals."
+      ],
+      "tags": [
+        {
+          "tagName": "tag",
+          "comment": "tuple-example"
+        }
+      ]
+    },
+    "typeAnnotation": {
+      "kind": "Tuple",
+      "literal": "TupleType",
+      "types": [
+        {
+          "kind": "PrimitiveType",
+          "literal": "\"hello\""
+        },
+        {
+          "kind": "PrimitiveType",
+          "literal": "\"world\""
+        }
+      ]
+    },
+    "literal": "TupleType = [\n    \"hello\",\n    \"world\"\n];"
+  },
+  {
+    "kind": "TypeAlias",
+    "name": "TupleTypeWithGeneric",
+    "jsdoc": {
+      "description": [
+        "Defines a tuple type that incorporates a generic type parameter.\nThis allows the tuple to hold a value of any specified type."
+      ],
+      "tags": [
+        {
+          "tagName": "tag",
+          "comment": "tuple-with-generic"
+        }
+      ]
+    },
+    "generics": [
+      {
+        "name": "T"
+      }
+    ],
+    "typeAnnotation": {
+      "kind": "Tuple",
+      "literal": "TupleTypeWithGeneric<T>",
+      "types": [
+        {
+          "kind": "TypeReference",
+          "name": "T"
+        }
+      ]
+    },
+    "literal": "TupleTypeWithGeneric<T> = [\n    T\n];"
+  },
   {
     "kind": "Variable",
     "name": "testSimpleNumericType",
@@ -13,9 +75,10 @@ export default [
         }
       ]
     },
+    "literal": "testSimpleNumericType: number",
     "typeAnnotation": {
       "kind": "PrimitiveType",
-      "type": "number"
+      "literal": "number"
     }
   },
   {
@@ -34,24 +97,26 @@ export default [
           "tagName": "property",
           "comment": "Ensures string types are handled correctly.",
           "name": "id",
-          "type": "string"
+          "literal": "string"
         },
         {
           "tagName": "property",
           "comment": "Validates boolean type parsing.",
           "name": "isActive",
-          "type": "boolean"
+          "literal": "boolean"
         }
       ]
     },
+    "literal": "testObjectWithJSDocProperties: {\n    id: string;\n    isActive: boolean;\n}",
     "typeAnnotation": {
       "kind": "TypeLiteral",
+      "literal": "{ id: string; isActive: boolean; }",
       "members": [
         {
           "name": "id",
-          "type": {
+          "typeAnnotation": {
             "kind": "PrimitiveType",
-            "type": "string"
+            "literal": "string"
           },
           "jsdoc": {
             "description": [
@@ -61,9 +126,9 @@ export default [
         },
         {
           "name": "isActive",
-          "type": {
+          "typeAnnotation": {
             "kind": "PrimitiveType",
-            "type": "boolean"
+            "literal": "boolean"
           },
           "jsdoc": {
             "description": [
@@ -88,14 +153,16 @@ export default [
         }
       ]
     },
+    "literal": "testObjectWithInlinedJSDoc: {\n    name: string;\n    price: number;\n}",
     "typeAnnotation": {
       "kind": "TypeLiteral",
+      "literal": "{ name: string; price: number; }",
       "members": [
         {
           "name": "name",
-          "type": {
+          "typeAnnotation": {
             "kind": "PrimitiveType",
-            "type": "string"
+            "literal": "string"
           },
           "jsdoc": {
             "description": [
@@ -105,9 +172,9 @@ export default [
         },
         {
           "name": "price",
-          "type": {
+          "typeAnnotation": {
             "kind": "PrimitiveType",
-            "type": "number"
+            "literal": "number"
           },
           "jsdoc": {
             "description": [
@@ -119,16 +186,51 @@ export default [
     }
   },
   {
-    "kind": "Variable",
-    "name": "destructuringProperty",
+    "kind": "TypeAlias",
+    "name": "ObjectTypeWithGeneric",
     "jsdoc": {
       "description": [
-        "Tests destructuring assignments where the object being destructured has its own JSDoc comments.\nVerifies whether the comments are maintained or lost upon destructuring."
+        "Tests type with generic"
       ]
     },
+    "generics": [
+      {
+        "name": "T"
+      }
+    ],
     "typeAnnotation": {
-      "kind": "PrimitiveType",
-      "type": "string"
+      "kind": "TypeLiteral",
+      "literal": "ObjectTypeWithGeneric<T>",
+      "members": [
+        {
+          "name": "id",
+          "typeAnnotation": {
+            "kind": "TypeReference",
+            "name": "T"
+          },
+          "jsdoc": {
+            "description": [
+              "Property id is of type T"
+            ]
+          }
+        }
+      ]
+    },
+    "literal": "ObjectTypeWithGeneric<T> = {\n    id: T;\n};"
+  },
+  {
+    "kind": "Variable",
+    "name": "testObjectWithGeneric",
+    "literal": "testObjectWithGeneric: ObjectTypeWithGeneric<string>",
+    "typeAnnotation": {
+      "kind": "TypeReference",
+      "name": "ObjectTypeWithGeneric",
+      "parameters": [
+        {
+          "kind": "PrimitiveType",
+          "literal": "string"
+        }
+      ]
     }
   },
   {
@@ -147,36 +249,38 @@ export default [
           "tagName": "property",
           "comment": "Describes the name of a product, verifying inline comment parsing.",
           "name": "name",
-          "type": "string"
+          "literal": "string"
         },
         {
           "tagName": "property",
           "comment": "Specifies the price of the product, demonstrating how numeric types are documented.",
           "name": "price",
-          "type": "number"
+          "literal": "number"
         },
         {
           "tagName": "property",
           "comment": "Ensures string types are handled correctly through explicit JSDoc tags.",
           "name": "id",
-          "type": "string"
+          "literal": "string"
         },
         {
           "tagName": "property",
           "comment": "Validates boolean type parsing with explicit JSDoc tags.",
           "name": "isActive",
-          "type": "boolean"
+          "literal": "boolean"
         }
       ]
     },
+    "literal": "testCombinedObjectJSDoc: {\n    name: string;\n    price: number;\n    id: string;\n    isActive: boolean;\n}",
     "typeAnnotation": {
       "kind": "TypeLiteral",
+      "literal": "{ name: string; price: number; id: string; isActive: boolean; }",
       "members": [
         {
           "name": "name",
-          "type": {
+          "typeAnnotation": {
             "kind": "PrimitiveType",
-            "type": "string"
+            "literal": "string"
           },
           "jsdoc": {
             "tags": [
@@ -197,9 +301,9 @@ export default [
         },
         {
           "name": "price",
-          "type": {
+          "typeAnnotation": {
             "kind": "PrimitiveType",
-            "type": "number"
+            "literal": "number"
           },
           "jsdoc": {
             "tags": [
@@ -220,9 +324,9 @@ export default [
         },
         {
           "name": "id",
-          "type": {
+          "typeAnnotation": {
             "kind": "PrimitiveType",
-            "type": "string"
+            "literal": "string"
           },
           "jsdoc": {
             "description": [
@@ -232,9 +336,9 @@ export default [
         },
         {
           "name": "isActive",
-          "type": {
+          "typeAnnotation": {
             "kind": "PrimitiveType",
-            "type": "boolean"
+            "literal": "boolean"
           },
           "jsdoc": {
             "description": [
@@ -246,16 +350,31 @@ export default [
     }
   },
   {
+    "kind": "Variable",
+    "name": "destructuringProperty",
+    "jsdoc": {
+      "description": [
+        "Tests destructuring assignments where the object being destructured has its own JSDoc comments.\nVerifies whether the comments are maintained or lost upon destructuring."
+      ]
+    },
+    "literal": "destructuringProperty: string",
+    "typeAnnotation": {
+      "kind": "PrimitiveType",
+      "literal": "string"
+    }
+  },
+  {
     "kind": "TypeAlias",
     "name": "Product",
     "typeAnnotation": {
       "kind": "TypeLiteral",
+      "literal": "Product",
       "members": [
         {
           "name": "name",
-          "type": {
+          "typeAnnotation": {
             "kind": "PrimitiveType",
-            "type": "string"
+            "literal": "string"
           },
           "jsdoc": {
             "description": [
@@ -265,9 +384,9 @@ export default [
         },
         {
           "name": "price",
-          "type": {
+          "typeAnnotation": {
             "kind": "PrimitiveType",
-            "type": "number"
+            "literal": "number"
           },
           "jsdoc": {
             "description": [
@@ -276,7 +395,8 @@ export default [
           }
         }
       ]
-    }
+    },
+    "literal": "Product = {\n    name: string;\n    price: number;\n};"
   },
   {
     "kind": "Variable",
@@ -292,6 +412,7 @@ export default [
         }
       ]
     },
+    "literal": "testProductTypeAlias: Product",
     "typeAnnotation": {
       "kind": "TypeReference",
       "name": "Product"
@@ -300,15 +421,16 @@ export default [
   {
     "kind": "Function",
     "name": "testCreatingSimpleObject",
-    "parameters": [],
+    "arguments": [],
     "returnType": {
       "kind": "TypeLiteral",
+      "literal": "{ property: string; }",
       "members": [
         {
           "name": "property",
-          "type": {
+          "typeAnnotation": {
             "kind": "PrimitiveType",
-            "type": "string"
+            "literal": "string"
           }
         }
       ]
@@ -325,7 +447,7 @@ export default [
         {
           "tagName": "returns",
           "comment": "Demonstrates returning a structured object with predefined typedef.",
-          "type": "SimpleObject"
+          "literal": "SimpleObject"
         }
       ]
     }
@@ -344,9 +466,28 @@ export default [
         }
       ]
     },
+    "literal": "testGenericTypeInference: <T>(value: T) => T",
     "typeAnnotation": {
-      "kind": "PrimitiveType",
-      "type": "<T>() => { id: T; }"
+      "kind": "FunctionType",
+      "literal": "<T>(value: T) => T",
+      "arguments": [
+        {
+          "name": "value",
+          "typeAnnotation": {
+            "kind": "TypeReference",
+            "name": "T"
+          }
+        }
+      ],
+      "returnType": {
+        "kind": "TypeReference",
+        "name": "T"
+      },
+      "generics": [
+        {
+          "name": "T"
+        }
+      ]
     }
   },
   {
@@ -363,25 +504,150 @@ export default [
         }
       ]
     },
+    "literal": "testFunctionWithComplexParams: (config: {\n    key: string;\n    value: number;\n    callback: (userInfo: {\n        name: string;\n        age: number;\n    }, settings: Settings) => void;\n}, settings: Settings) => void",
     "typeAnnotation": {
-      "kind": "PrimitiveType",
-      "type": "(config: { key: string; value: number; callback: (userInfo: { name: string; age: number; }, settings: Settings) => void; }, settings: Settings) => void"
+      "kind": "FunctionType",
+      "literal": "(config: { key: string; value: number; callback: (userInfo: { name: string; age: number; }, settings: Settings) => void; }, settings: Settings) => void",
+      "arguments": [
+        {
+          "name": "config",
+          "typeAnnotation": {
+            "kind": "TypeLiteral",
+            "literal": "{ key: string; value: number; callback: (userInfo: { name: string; age: number; }, settings: Settings) => void; }",
+            "members": [
+              {
+                "name": "key",
+                "typeAnnotation": {
+                  "kind": "PrimitiveType",
+                  "literal": "string"
+                },
+                "jsdoc": {
+                  "description": [
+                    "Key in the configuration object"
+                  ]
+                }
+              },
+              {
+                "name": "value",
+                "typeAnnotation": {
+                  "kind": "PrimitiveType",
+                  "literal": "number"
+                },
+                "jsdoc": {
+                  "description": [
+                    "Value associated with the key"
+                  ]
+                }
+              },
+              {
+                "name": "callback",
+                "typeAnnotation": {
+                  "kind": "FunctionType",
+                  "literal": "(userInfo: { name: string; age: number; }, settings: Settings) => void",
+                  "arguments": [
+                    {
+                      "name": "userInfo",
+                      "typeAnnotation": {
+                        "kind": "TypeLiteral",
+                        "literal": "{ name: string; age: number; }",
+                        "members": [
+                          {
+                            "name": "name",
+                            "typeAnnotation": {
+                              "kind": "PrimitiveType",
+                              "literal": "string"
+                            },
+                            "jsdoc": {
+                              "description": [
+                                "Name of the user"
+                              ]
+                            }
+                          },
+                          {
+                            "name": "age",
+                            "typeAnnotation": {
+                              "kind": "PrimitiveType",
+                              "literal": "number"
+                            },
+                            "jsdoc": {
+                              "description": [
+                                "Age of the user"
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "name": "settings",
+                      "typeAnnotation": {
+                        "kind": "TypeReference",
+                        "name": "Settings"
+                      }
+                    }
+                  ],
+                  "returnType": {
+                    "kind": "PrimitiveType",
+                    "literal": "void"
+                  }
+                },
+                "jsdoc": {
+                  "tags": [
+                    {
+                      "tagName": "param",
+                      "comment": "User details.",
+                      "name": "userInfo",
+                      "literal": "{ name: string, age: number }"
+                    },
+                    {
+                      "tagName": "param",
+                      "comment": "User specific settings.",
+                      "name": "settings",
+                      "literal": "Settings"
+                    }
+                  ],
+                  "description": [
+                    "Callback function within the configuration object."
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "settings",
+          "typeAnnotation": {
+            "kind": "TypeReference",
+            "name": "Settings"
+          }
+        }
+      ],
+      "returnType": {
+        "kind": "PrimitiveType",
+        "literal": "void"
+      }
     }
   },
   {
     "kind": "Function",
     "name": "testTraditionalFunctionSyntax",
-    "parameters": [
+    "arguments": [
       {
         "name": "config",
-        "type": {
+        "jsdoc": {
+          "description": [
+            "Inlined jsdoc comment for config"
+          ]
+        },
+        "typeAnnotation": {
           "kind": "TypeLiteral",
+          "literal": "{ key: string; value: number; }",
           "members": [
             {
               "name": "key",
-              "type": {
+              "typeAnnotation": {
                 "kind": "PrimitiveType",
-                "type": "string"
+                "literal": "string"
               },
               "jsdoc": {
                 "description": [
@@ -391,9 +657,9 @@ export default [
             },
             {
               "name": "value",
-              "type": {
+              "typeAnnotation": {
                 "kind": "PrimitiveType",
-                "type": "number"
+                "literal": "number"
               },
               "jsdoc": {
                 "description": [
@@ -406,7 +672,7 @@ export default [
       },
       {
         "name": "settings",
-        "type": {
+        "typeAnnotation": {
           "kind": "TypeReference",
           "name": "Settings"
         }
@@ -414,7 +680,7 @@ export default [
     ],
     "returnType": {
       "kind": "PrimitiveType",
-      "type": "void"
+      "literal": "void"
     },
     "jsdoc": {
       "description": [
@@ -431,35 +697,6 @@ export default [
   {
     "kind": "TypeAlias",
     "name": "Settings",
-    "typeAnnotation": {
-      "kind": "TypeLiteral",
-      "members": [
-        {
-          "name": "theme",
-          "type": {
-            "kind": "PrimitiveType",
-            "type": "string"
-          },
-          "jsdoc": {
-            "description": [
-              "Theme setting of the application"
-            ]
-          }
-        },
-        {
-          "name": "layout",
-          "type": {
-            "kind": "PrimitiveType",
-            "type": "string"
-          },
-          "jsdoc": {
-            "description": [
-              "Layout setting of the application"
-            ]
-          }
-        }
-      ]
-    },
     "jsdoc": {
       "description": [
         "Tests the documentation of settings using a type alias, emphasizing the detailed property JSDoc within\na type structure to ensure types are not only parsed correctly but also thoroughly documented."
@@ -470,7 +707,38 @@ export default [
           "comment": "test-case"
         }
       ]
-    }
+    },
+    "typeAnnotation": {
+      "kind": "TypeLiteral",
+      "literal": "Settings",
+      "members": [
+        {
+          "name": "theme",
+          "typeAnnotation": {
+            "kind": "PrimitiveType",
+            "literal": "string"
+          },
+          "jsdoc": {
+            "description": [
+              "Theme setting of the application"
+            ]
+          }
+        },
+        {
+          "name": "layout",
+          "typeAnnotation": {
+            "kind": "PrimitiveType",
+            "literal": "string"
+          },
+          "jsdoc": {
+            "description": [
+              "Layout setting of the application"
+            ]
+          }
+        }
+      ]
+    },
+    "literal": "Settings = {\n    theme: string;\n    layout: string;\n};"
   },
   {
     "kind": "Class",
@@ -480,71 +748,71 @@ export default [
       {
         "kind": "Property",
         "name": "firstName",
-        "typeAnnotation": {
-          "kind": "PrimitiveType",
-          "type": "string"
-        },
         "jsdoc": {
           "description": [
             "Publicly accessible first name of the user"
           ]
+        },
+        "typeAnnotation": {
+          "kind": "PrimitiveType",
+          "literal": "string"
         }
       },
       {
         "kind": "Constructor",
-        "typeAnnotation": {
-          "kind": "PrimitiveType",
-          "type": "any"
-        },
-        "parameters": [],
         "jsdoc": {
           "description": [
             "Constructor that initializes user details."
           ]
-        }
+        },
+        "typeAnnotation": {
+          "kind": "PrimitiveType",
+          "literal": "any"
+        },
+        "parameters": []
       },
       {
         "kind": "Method",
         "name": "greet",
-        "typeAnnotation": {
-          "kind": "PrimitiveType",
-          "type": "() => string"
-        },
-        "parameters": [],
         "jsdoc": {
           "description": [
             "Method that greets the user, demonstrating return type documentation."
           ]
-        }
+        },
+        "typeAnnotation": {
+          "kind": "PrimitiveType",
+          "literal": "() => string"
+        },
+        "parameters": []
       },
       {
         "kind": "Property",
         "name": "logDetails",
-        "accessModifier": "private",
-        "typeAnnotation": {
-          "kind": "PrimitiveType",
-          "type": "any"
-        },
         "jsdoc": {
           "description": [
             "A private method demonstrating privacy within classes.\nThis method logs a private message."
           ]
-        }
+        },
+        "typeAnnotation": {
+          "kind": "PrimitiveType",
+          "literal": "any"
+        },
+        "accessModifier": "private"
       },
       {
         "kind": "Method",
         "name": "getDetails",
-        "accessModifier": "protected",
-        "typeAnnotation": {
-          "kind": "PrimitiveType",
-          "type": "() => string"
-        },
-        "parameters": [],
         "jsdoc": {
           "description": [
             "A protected method showing how protected members are handled.\nThis method returns the details in a formatted string."
           ]
-        }
+        },
+        "typeAnnotation": {
+          "kind": "PrimitiveType",
+          "literal": "() => string"
+        },
+        "parameters": [],
+        "accessModifier": "protected"
       }
     ],
     "jsdoc": {
@@ -567,28 +835,28 @@ export default [
       {
         "kind": "Property",
         "name": "name",
-        "typeAnnotation": {
-          "kind": "PrimitiveType",
-          "type": "string"
-        },
         "jsdoc": {
           "description": [
             "The name of the user"
           ]
+        },
+        "typeAnnotation": {
+          "kind": "PrimitiveType",
+          "literal": "string"
         }
       },
       {
         "kind": "Constructor",
         "typeAnnotation": {
           "kind": "PrimitiveType",
-          "type": "any"
+          "literal": "any"
         },
         "parameters": [
           {
             "name": "name",
-            "type": {
+            "typeAnnotation": {
               "kind": "PrimitiveType",
-              "type": "string"
+              "literal": "string"
             }
           }
         ]
@@ -596,30 +864,30 @@ export default [
       {
         "kind": "Method",
         "name": "greet",
-        "typeAnnotation": {
-          "kind": "PrimitiveType",
-          "type": "() => string"
-        },
-        "parameters": [],
         "jsdoc": {
           "description": [
             "Abstract method to be implemented by subclasses. Must return a greeting message."
           ]
-        }
+        },
+        "typeAnnotation": {
+          "kind": "PrimitiveType",
+          "literal": "() => string"
+        },
+        "parameters": []
       },
       {
         "kind": "Method",
         "name": "getName",
-        "typeAnnotation": {
-          "kind": "PrimitiveType",
-          "type": "() => string"
-        },
-        "parameters": [],
         "jsdoc": {
           "description": [
             "A public method accessible to instances of subclasses.\nThis method returns the name of the user."
           ]
-        }
+        },
+        "typeAnnotation": {
+          "kind": "PrimitiveType",
+          "literal": "() => string"
+        },
+        "parameters": []
       }
     ]
   },
@@ -633,14 +901,14 @@ export default [
         "kind": "Constructor",
         "typeAnnotation": {
           "kind": "PrimitiveType",
-          "type": "any"
+          "literal": "any"
         },
         "parameters": [
           {
             "name": "name",
-            "type": {
+            "typeAnnotation": {
               "kind": "PrimitiveType",
-              "type": "string"
+              "literal": "string"
             }
           }
         ]
@@ -648,16 +916,16 @@ export default [
       {
         "kind": "Method",
         "name": "greet",
-        "typeAnnotation": {
-          "kind": "PrimitiveType",
-          "type": "() => string"
-        },
-        "parameters": [],
         "jsdoc": {
           "description": [
             "Implementation of the abstract greet method."
           ]
-        }
+        },
+        "typeAnnotation": {
+          "kind": "PrimitiveType",
+          "literal": "() => string"
+        },
+        "parameters": []
       }
     ],
     "jsdoc": {
@@ -671,52 +939,61 @@ export default [
     "name": "TestLogLevel",
     "members": [
       {
-        "name": "ERROR"
+        "name": "ERROR",
+        "value": 0,
+        "typeAnnotation": {
+          "kind": "PrimitiveType",
+          "literal": "number"
+        }
       },
       {
-        "name": "WARN"
+        "name": "WARN",
+        "value": 1,
+        "typeAnnotation": {
+          "kind": "PrimitiveType",
+          "literal": "number"
+        }
       },
       {
-        "name": "INFO"
+        "name": "INFO",
+        "value": 2,
+        "typeAnnotation": {
+          "kind": "PrimitiveType",
+          "literal": "number"
+        }
       },
       {
-        "name": "DEBUG"
+        "name": "DEBUG",
+        "value": 3,
+        "typeAnnotation": {
+          "kind": "PrimitiveType",
+          "literal": "number"
+        }
       }
     ]
   },
   {
     "kind": "Function",
     "name": "testFunctionUsingEnum",
-    "parameters": [
+    "arguments": [
       {
         "name": "level",
-        "type": {
+        "typeAnnotation": {
           "kind": "TypeReference",
           "name": "TestLogLevel"
         }
       },
       {
         "name": "message",
-        "type": {
+        "typeAnnotation": {
           "kind": "PrimitiveType",
-          "type": "string"
+          "literal": "string"
         }
       }
     ],
     "returnType": {
       "kind": "PrimitiveType",
-      "type": "void"
-    },
-    "jsdoc": {
-      "description": [
-        "Tests function parameter documentation using an enum, focusing on correct type linkage and\nvalue representation in logging functions."
-      ],
-      "tags": [
-        {
-          "tagName": "tag",
-          "comment": "test-case"
-        }
-      ]
+      "literal": "void"
     }
   }
-] as const
+] as const satisfies Type[]
